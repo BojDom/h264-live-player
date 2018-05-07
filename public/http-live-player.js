@@ -5069,14 +5069,14 @@ var WSAvcPlayer = new Class({
   Implements : [Events],
 
 
-  initialize : function(canvas, canvastype,size) {
+  initialize : function(canvas, canvastype) {
 
     this.canvas     = canvas;
     this.canvastype = canvastype;
 
     // AVC codec initialization
     this.avc = new Avc();
-    this.avc.configure({
+    if(false) this.avc.configure({
       filter: "original",
       filterHorLuma: "optimized",
       filterVerLumaEdge: "optimized",
@@ -5087,10 +5087,8 @@ var WSAvcPlayer = new Class({
     this.ws;
     this.pktnum = 0;
     this.framesList= []
-     this.shiftFrame()
+    this.shiftFrame()
 
-    if (typeof size!=='object')  size = {w:640,h:480}
-    this.initCanvas(size.w,size.h)
   },
 
 
@@ -5117,7 +5115,13 @@ var WSAvcPlayer = new Class({
 
 
   push : function(d) {  
-      this.framesList.push(  Uint8Array.from(Object.values(d)));
+
+      console.log('pushiing',this.running,this.framesList.length)
+      
+      //log("[Pkt " + this.pktnum + " (" + evt.data.byteLength + " bytes)]");
+      //this.decode(frame);
+      this.framesList.push(d);
+    
   },
   running: true,
 
@@ -5132,6 +5136,8 @@ var WSAvcPlayer = new Class({
       }
 
       var frame = this.framesList.shift();
+      console.log(frame)
+
       if(frame)
         this.decode(frame);
 

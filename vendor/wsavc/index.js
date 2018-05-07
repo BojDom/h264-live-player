@@ -13,14 +13,14 @@ var WSAvcPlayer = new Class({
   Implements : [Events],
 
 
-  initialize : function(canvas, canvastype) {
+  initialize : function(canvas, canvastype,size) {
 
     this.canvas     = canvas;
     this.canvastype = canvastype;
 
     // AVC codec initialization
     this.avc = new Avc();
-    if(false) this.avc.configure({
+    this.avc.configure({
       filter: "original",
       filterHorLuma: "optimized",
       filterVerLumaEdge: "optimized",
@@ -30,7 +30,11 @@ var WSAvcPlayer = new Class({
     //WebSocket variable
     this.ws;
     this.pktnum = 0;
+    this.framesList= []
+     this.shiftFrame()
 
+    if (typeof size!=='object')  size = {w:640,h:480}
+    this.initCanvas(size.w,size.h)
   },
 
 
@@ -55,67 +59,30 @@ var WSAvcPlayer = new Class({
     this.avc.decode(data);
   },
 
-  connect : function(url) {
 
-    // Websocket initialization
-    if (this.ws != undefined) {
-      this.ws.close();
-      delete this.ws;
-    }
-    this.ws = new WebSocket(url);
-    this.ws.binaryType = "arraybuffer";
+  push : function(d) {  
+      this.framesList.push(  Uint8Array.from(Object.values(d)));
+  },
+  running: true,
 
-    this.ws.onopen = () => {
-      log("Connected to " + url);
-    };
-
-
-    var framesList = [];
-
-    this.ws.onmessage = (evt) => {
-      if(typeof evt.data == "string")
-        return this.cmd(JSON.parse(evt.data));
-
-      this.pktnum++;
-      var frame = new Uint8Array(evt.data);
-      //log("[Pkt " + this.pktnum + " (" + evt.data.byteLength + " bytes)]");
-      //this.decode(frame);
-      framesList.push(frame);
-    };
-
-
-    var running = true;
-
-    var shiftFrame = function() {
-      if(!running)
+  shiftFrame :function() {
+      if(!this.running)
         return;
 
 
-      if(framesList.length > 10) {
-        log("Dropping frames", framesList.length);
-        framesList = [];
+      if(this.framesList.length > 10) {
+        log("Dropping frames", this.framesList.length);
+        this.framesList = [];
       }
 
-      var frame = framesList.shift();
-
-
+      var frame = this.framesList.shift();
       if(frame)
         this.decode(frame);
 
-      requestAnimationFrame(shiftFrame);
-    }.bind(this);
-
-
-    shiftFrame();
-
-
-
-    this.ws.onclose = () => {
-      running = false;
-      log("WSAvcPlayer: Connection closed")
-    };
+      requestAnimationFrame(this.shiftFrame.bind(this));
 
   },
+
 
   initCanvas : function(width, height) {
     var canvasFactory = this.canvastype == "webgl" || this.canvastype == "YUVWebGLCanvas"

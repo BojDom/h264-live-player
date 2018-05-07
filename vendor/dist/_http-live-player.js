@@ -5069,14 +5069,14 @@ var WSAvcPlayer = new Class({
   Implements : [Events],
 
 
-  initialize : function(canvas, canvastype,size) {
+  initialize : function(canvas, canvastype) {
 
     this.canvas     = canvas;
     this.canvastype = canvastype;
 
     // AVC codec initialization
     this.avc = new Avc();
-    this.avc.configure({
+    if(false) this.avc.configure({
       filter: "original",
       filterHorLuma: "optimized",
       filterVerLumaEdge: "optimized",
@@ -5087,10 +5087,7 @@ var WSAvcPlayer = new Class({
     this.ws;
     this.pktnum = 0;
     this.framesList= []
-     this.shiftFrame()
 
-    if (typeof size!=='object')  size = {w:640,h:480}
-    this.initCanvas(size.w,size.h)
   },
 
 
@@ -5116,29 +5113,50 @@ var WSAvcPlayer = new Class({
   },
 
 
-  push : function(d) {  
-      this.framesList.push(  Uint8Array.from(Object.values(d)));
-  },
-  running: true,
+  push : function(ws) {  
 
-  shiftFrame :function() {
-      if(!this.running)
+    
+
+
+
+    this.ws.s = (evt) => {
+      if(typeof evt.data == "string")
+        return this.cmd(JSON.parse(evt.data));
+
+      this.pktnum++;
+      var frame = new Uint8Array(evt.data);
+      //log("[Pkt " + this.pktnum + " (" + evt.data.byteLength + " bytes)]");
+      //this.decode(frame);
+      this.framesList.push(frame);
+    };
+
+
+    var running = true;
+
+    var shiftFrame = function() {
+      if(!running)
         return;
 
 
-      if(this.framesList.length > 10) {
+      if(framesList.length > 10) {
         log("Dropping frames", this.framesList.length);
         this.framesList = [];
       }
 
       var frame = this.framesList.shift();
+
+
       if(frame)
         this.decode(frame);
 
-      requestAnimationFrame(this.shiftFrame.bind(this));
+      requestAnimationFrame(shiftFrame);
+    }.bind(this);
+
+
+    shiftFrame();
+
 
   },
-
 
   initCanvas : function(width, height) {
     var canvasFactory = this.canvastype == "webgl" || this.canvastype == "YUVWebGLCanvas"
